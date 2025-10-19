@@ -1,7 +1,8 @@
 {
   "name": "fpl-anomali",
   "compatibility_date": "2025-10-19",
+  "main": "./_worker.js",
   "assets": {
-    "directory": "./dist"
-  }
+    "directory": "./dist",
+  },
 }
