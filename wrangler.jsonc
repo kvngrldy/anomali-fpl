@@ -1,0 +1,7 @@
+{
+  "name": "fpl-anomali",
+  "compatibility_date": "2025-10-19",
+  "assets": {
+    "directory": "./dist"
+  }
+}

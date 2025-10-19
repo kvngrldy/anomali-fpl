@@ -7,12 +7,7 @@ import Standings from "@/components/Standings";
 import ManagerOfWeek from "@/components/ManagerOfWeek";
 
 const App: React.FC = () => {
-  const [leagueId, setLeagueId] = useState<string>("1594760");
-  const [activeLeagueId, setActiveLeagueId] = useState<string>("1594760");
-
-  const handleFetch = () => {
-    setActiveLeagueId(leagueId);
-  };
+  const leagueId = "1594760";
 
   return (
     <div className="flex flex-col items-center p-6 bg-background min-h-screen">
@@ -30,11 +25,11 @@ const App: React.FC = () => {
           </TabsList>
 
           <TabsContent value="standings" className="mt-6">
-            <Standings leagueId={activeLeagueId} />
+            <Standings leagueId={leagueId} />
           </TabsContent>
 
           <TabsContent value="weekly" className="mt-6">
-            <ManagerOfWeek leagueId={activeLeagueId} />
+            <ManagerOfWeek leagueId={leagueId} />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,7 +1,5 @@
 // lib/fpl.ts
 
-const BASE_URL = "https://fantasy.premierleague.com/api";
-
 export interface TeamData {
   rank: number;
   teamName: string;
@@ -25,9 +23,7 @@ export interface GameweekTopBottom {
   isFinished: boolean;
 }
 
-export const fetchLeagueStandings = async (
-  leagueId: string,
-): Promise<TeamData[]> => {
+export const fetchLeagueStandings = async (): Promise<TeamData[]> => {
   try {
     const standingsResponse = await fetch(
       `/api/leagues-classic/1594760/standings/`,
