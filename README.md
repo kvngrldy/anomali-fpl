@@ -1,6 +1,6 @@
 # FPL Anomali Leaderboard ⚽️
 
-A fun, quick project to test vibecoding and experiment with new workflow setups! Built with React, TypeScript, and shadcn/ui components.
+A fun, quick project to test vibecoding and experiment with new workflow setups!
 
 ## What's This?
 
@@ -31,5 +31,3 @@ A Fantasy Premier League (FPL) league tracker that shows:
 npm install
 npm run dev
 ```
-
-Built for league `1594760` by default. Change it in the League Search input!
