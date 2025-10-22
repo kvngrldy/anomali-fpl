@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { fetchLeagueStandings, type TeamData } from "@/lib/fpl";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface StandingsProps {
@@ -62,39 +68,135 @@ const Standings: React.FC<StandingsProps> = ({ leagueId }) => {
             ))}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Rank</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Team Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Manager</th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold">Points</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {teams.map((team, index) => (
-                  <tr
-                    key={team.rank}
-                    className="hover:bg-muted/50 transition-colors"
-                  >
-                    <td className="px-4 py-4">
+          <>
+            {/* Mobile/Tablet Card View */}
+            <div className="block lg:hidden space-y-3">
+              {teams.map((team, index) => (
+                <div
+                  key={team.rank}
+                  className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
                       <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary/10 font-bold text-primary">
                         {index + 1}
                       </div>
-                    </td>
-                    <td className="px-4 py-4 font-medium">{team.teamName}</td>
-                    <td className="px-4 py-4 text-muted-foreground">{team.managerName}</td>
-                    <td className="px-4 py-4 text-right">
-                      <span className="inline-flex items-center justify-center rounded-md bg-secondary px-3 py-1.5 font-semibold">
+                      <div>
+                        <div className="font-semibold">{team.teamName}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="inline-flex items-center justify-center rounded-md bg-secondary px-3 py-1.5 font-semibold text-sm">
                         {team.points}
                       </span>
-                    </td>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm pt-3 border-t border-border">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">
+                        Points This Week
+                      </span>
+                      <span className="inline-flex items-center justify-center rounded-md bg-blue-500/10 text-blue-500 dark:bg-blue-400/10 dark:text-blue-400 px-2 py-1 font-semibold">
+                        {team.latestGwPoints}
+                      </span>
+                    </div>
+                    {team.latestGwTransfers &&
+                      team.latestGwTransfers.length > 0 && (
+                        <div className="space-y-1 pt-2">
+                          {team.latestGwTransfers.map((transfer, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className="text-red-500">
+                                {transfer.playerOut}
+                              </span>
+                              <span className="text-muted-foreground">→</span>
+                              <span className="text-green-500">
+                                {transfer.playerIn}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Rank
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Team Name
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Transfers This Week
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold">
+                      Points This Week
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold">
+                      Total Points
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {teams.map((team, index) => (
+                    <tr
+                      key={team.rank}
+                      className="hover:bg-muted/50 transition-colors"
+                    >
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary/10 font-bold text-primary">
+                          {index + 1}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 font-medium">{team.teamName}</td>
+                      <td className="px-4 py-4">
+                        {team.latestGwTransfers &&
+                        team.latestGwTransfers.length > 0 ? (
+                          <div className="space-y-1 text-sm">
+                            {team.latestGwTransfers.map((transfer, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2"
+                              >
+                                <span className="text-red-500">
+                                  {transfer.playerOut}
+                                </span>
+                                <span className="text-muted-foreground">→</span>
+                                <span className="text-green-500">
+                                  {transfer.playerIn}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">
+                            No transfers
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <span className="inline-flex items-center justify-center rounded-md bg-blue-500/10 text-blue-500 dark:bg-blue-400/10 dark:text-blue-400 px-3 py-1.5 font-semibold">
+                          {team.latestGwPoints}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <span className="inline-flex items-center justify-center rounded-md bg-secondary px-3 py-1.5 font-semibold">
+                          {team.points}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

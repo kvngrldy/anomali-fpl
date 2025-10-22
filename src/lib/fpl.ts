@@ -1,10 +1,18 @@
 // lib/fpl.ts
 
+export interface Transfer {
+  playerIn: string;
+  playerOut: string;
+  time: string;
+}
+
 export interface TeamData {
   rank: number;
   teamName: string;
   managerName: string;
   points: number;
+  latestGwPoints: number;
+  latestGwTransfers: Transfer[];
 }
 
 export interface GameweekPerformance {
@@ -23,8 +31,32 @@ export interface GameweekTopBottom {
   isFinished: boolean;
 }
 
+// Helper function to create player ID to name mapping
+const fetchPlayerMapping = async (): Promise<Map<number, string>> => {
+  const bootstrapResponse = await fetch(`/api/bootstrap-static/`);
+  const bootstrapData = await bootstrapResponse.json();
+
+  const playerMap = new Map<number, string>();
+  bootstrapData.elements.forEach((player: any) => {
+    playerMap.set(player.id, player.web_name);
+  });
+
+  return playerMap;
+};
+
 export const fetchLeagueStandings = async (): Promise<TeamData[]> => {
   try {
+    // Fetch player mapping first
+    const playerMap = await fetchPlayerMapping();
+
+    // Fetch current gameweek info
+    const bootstrapResponse = await fetch(`/api/bootstrap-static/`);
+    const bootstrapData = await bootstrapResponse.json();
+    const currentGameweek = bootstrapData.events.find(
+      (event: any) => event.is_current,
+    );
+    const currentGwNumber = currentGameweek?.id || 0;
+
     const standingsResponse = await fetch(
       `/api/leagues-classic/1594760/standings/`,
     );
@@ -32,10 +64,17 @@ export const fetchLeagueStandings = async (): Promise<TeamData[]> => {
 
     const teams: TeamData[] = await Promise.all(
       standingsData?.standings?.results.map(async (team: any) => {
+        // Fetch history data
         const historyResponse = await fetch(
           `/api/entry/${team.entry}/history/`,
         );
         const historyData = await historyResponse.json();
+
+        // Fetch transfer data
+        const transfersResponse = await fetch(
+          `/api/entry/${team.entry}/transfers/`,
+        );
+        const transfersData = await transfersResponse.json();
 
         // Check if there are any entries with event === 1
         const hasEventOne = historyData.current.some(
@@ -43,19 +82,41 @@ export const fetchLeagueStandings = async (): Promise<TeamData[]> => {
         );
 
         // Get the total points from the last entry
-        const lastEntryPoints =
+        const lastEntry =
           historyData.current.length > 0
-            ? historyData.current[historyData.current.length - 1].total_points
-            : 0;
+            ? historyData.current[historyData.current.length - 1]
+            : null;
+
+        const lastEntryPoints = lastEntry ? lastEntry.total_points : 0;
+
+        // Get the latest gameweek points (points minus transfer cost)
+        const latestGwPoints = lastEntry
+          ? lastEntry.points - lastEntry.event_transfers_cost
+          : 0;
 
         // Calculate total points
         const points = hasEventOne ? lastEntryPoints : lastEntryPoints + 54;
+
+        // Get transfers for the current gameweek
+        const latestGwTransfers: Transfer[] = transfersData
+          .filter((transfer: any) => transfer.event === currentGwNumber)
+          .map((transfer: any) => ({
+            playerIn:
+              playerMap.get(transfer.element_in) ||
+              `Player ${transfer.element_in}`,
+            playerOut:
+              playerMap.get(transfer.element_out) ||
+              `Player ${transfer.element_out}`,
+            time: transfer.time,
+          }));
 
         return {
           rank: team.rank,
           teamName: team.entry_name,
           managerName: team.player_name,
           points,
+          latestGwPoints,
+          latestGwTransfers,
         };
       }),
     );

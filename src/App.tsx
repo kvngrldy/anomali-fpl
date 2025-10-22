@@ -21,7 +21,7 @@ const App: React.FC = () => {
         <Tabs defaultValue="standings" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="standings">League Standings</TabsTrigger>
-            <TabsTrigger value="weekly">Manager/Loser of the Week</TabsTrigger>
+            <TabsTrigger value="weekly">Manager of the Week</TabsTrigger>
           </TabsList>
 
           <TabsContent value="standings" className="mt-6">
