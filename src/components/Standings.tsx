@@ -83,6 +83,9 @@ const Standings: React.FC<StandingsProps> = ({ leagueId }) => {
                       </div>
                       <div>
                         <div className="font-semibold">{team.teamName}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {team.managerName}
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -155,7 +158,12 @@ const Standings: React.FC<StandingsProps> = ({ leagueId }) => {
                           {index + 1}
                         </div>
                       </td>
-                      <td className="px-4 py-4 font-medium">{team.teamName}</td>
+                      <td className="px-4 py-4">
+                        <div className="font-medium">{team.teamName}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {team.managerName}
+                        </div>
+                      </td>
                       <td className="px-4 py-4">
                         {team.latestGwTransfers &&
                         team.latestGwTransfers.length > 0 ? (
