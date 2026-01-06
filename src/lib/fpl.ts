@@ -634,7 +634,12 @@ export const fetchGameweekPerformances = async (
     const standingsData = await standingsResponse.json();
 
     // Get all team entries
-    const teams = standingsData?.standings?.results || [];
+    const teamsBeforeFilter = standingsData?.standings?.results || [];
+
+    // Filter out excluded managers
+    const teams = teamsBeforeFilter.filter(
+      (team: any) => !isExcludedManager(team.entry_name),
+    );
 
     // Fetch history for all teams (with caching)
     const teamHistories = await Promise.all(

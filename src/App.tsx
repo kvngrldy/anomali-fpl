@@ -19,13 +19,35 @@ const App: React.FC = () => {
         </div>
 
         <Tabs defaultValue="standings" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="standings">Klasemen</TabsTrigger>
-            <TabsTrigger value="weekly">Manager of the Week</TabsTrigger>
-            <TabsTrigger value="rank">Rank Progression</TabsTrigger>
-            <TabsTrigger value="achievements">Achievements</TabsTrigger>
+          {/* Responsive TabsList */}
+          <TabsList className="inline-flex h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-1 sm:grid sm:grid-cols-4 sm:flex-nowrap sm:justify-center sm:bg-muted">
+            <TabsTrigger
+              value="standings"
+              className="min-w-fit flex-1 sm:flex-initial data-[state=active]:bg-background"
+            >
+              Klasemen
+            </TabsTrigger>
+            <TabsTrigger
+              value="weekly"
+              className="min-w-fit flex-1 sm:flex-initial data-[state=active]:bg-background"
+            >
+              Manager of the Week
+            </TabsTrigger>
+            <TabsTrigger
+              value="rank"
+              className="min-w-fit flex-1 sm:flex-initial data-[state=active]:bg-background"
+            >
+              Rank Progression
+            </TabsTrigger>
+            <TabsTrigger
+              value="achievements"
+              className="min-w-fit flex-1 sm:flex-initial data-[state=active]:bg-background"
+            >
+              Achievements
+            </TabsTrigger>
           </TabsList>
 
+          {/* Content */}
           <TabsContent value="standings" className="mt-6">
             <Standings leagueId={leagueId} />
           </TabsContent>
