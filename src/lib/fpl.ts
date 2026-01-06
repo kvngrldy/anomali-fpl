@@ -227,8 +227,8 @@ export const fetchLeagueStandings = async (): Promise<TeamData[]> => {
 const EXCLUDED_MANAGERS = ["Areef", "Airwaves"];
 
 const isExcludedManager = (teamName: string): boolean => {
-  return EXCLUDED_MANAGERS.some(
-    (name) => teamName.toLowerCase().includes(name.toLowerCase()),
+  return EXCLUDED_MANAGERS.some((name) =>
+    teamName.toLowerCase().includes(name.toLowerCase()),
   );
 };
 
@@ -247,11 +247,29 @@ export interface ManagerRankHistory {
 }
 
 export interface AchievementData {
-  mostValuableSquad: { manager: string; teamName: string; value: number } | null;
-  mostManagerOfWeek: { manager: string; teamName: string; count: number } | null;
+  mostValuableSquad: {
+    manager: string;
+    teamName: string;
+    value: number;
+  } | null;
+  mostManagerOfWeek: {
+    manager: string;
+    teamName: string;
+    count: number;
+  } | null;
   mostLoserOfWeek: { manager: string; teamName: string; count: number } | null;
-  highestSingleGw: { manager: string; teamName: string; gameweek: number; points: number } | null;
-  lowestSingleGw: { manager: string; teamName: string; gameweek: number; points: number } | null;
+  highestSingleGw: {
+    manager: string;
+    teamName: string;
+    gameweek: number;
+    points: number;
+  } | null;
+  lowestSingleGw: {
+    manager: string;
+    teamName: string;
+    gameweek: number;
+    points: number;
+  } | null;
 }
 
 export const fetchRankProgression = async (
@@ -331,9 +349,7 @@ export const fetchRankProgression = async (
             const position =
               gwStandings.findIndex((s) => s.entryId === team.entryId) + 1;
 
-            const teamGwData = team.rawHistory.find(
-              (h: any) => h.event === gw,
-            );
+            const teamGwData = team.rawHistory.find((h: any) => h.event === gw);
             if (teamGwData && position > 0) {
               history.push({
                 gameweek: gw,
@@ -398,7 +414,7 @@ export const fetchAchievementStats = async (
           setToCache(historyCacheKey, historyData, currentGameweekNumber);
         }
 
-        // Fetch team value from entry endpoint
+        // Fetch current team value
         const entryCacheKey = `entry_${team.entry}`;
         let entryData = getFromCache<any>(entryCacheKey, currentGameweekNumber);
 
@@ -418,7 +434,7 @@ export const fetchAchievementStats = async (
       }),
     );
 
-    // Calculate most valuable squad
+    // === Existing: Most Valuable Squad ===
     const sortedByValue = [...teamDataList].sort(
       (a, b) => b.teamValue - a.teamValue,
     );
@@ -430,16 +446,22 @@ export const fetchAchievementStats = async (
         }
       : null;
 
-    // Calculate GW winners and losers (only finished gameweeks)
-    const finishedGameweeks = bootstrapData.events
-      .filter((e: any) => e.finished)
-      .map((e: any) => e.id);
+    // === New Achievement Trackers ===
+    let highestBenchPoints: AchievementData["highestBenchPoints"] = null;
+    let highestCaptainPoints: AchievementData["highestCaptainPoints"] = null;
 
-    const managerOfWeekCount: Record<
+    const centurionCount: Record<
       number,
       { manager: string; teamName: string; count: number }
     > = {};
-    const loserOfWeekCount: Record<
+
+    // === Top 3 / Bottom 3 + Highest/Lowest Single GW ===
+    const top3OfWeekCount: Record<
+      number,
+      { manager: string; teamName: string; count: number }
+    > = {};
+
+    const bottom3OfWeekCount: Record<
       number,
       { manager: string; teamName: string; count: number }
     > = {};
@@ -447,19 +469,63 @@ export const fetchAchievementStats = async (
     let highestSingleGw: AchievementData["highestSingleGw"] = null;
     let lowestSingleGw: AchievementData["lowestSingleGw"] = null;
 
+    const finishedGameweeks = bootstrapData.events
+      .filter((e: any) => e.finished)
+      .map((e: any) => e.id);
+
     finishedGameweeks.forEach((gw: number) => {
       const gwPerformances = teamDataList
         .map((team) => {
           const gwData = team.history.find((h: any) => h.event === gw);
-          return gwData
-            ? {
-                entryId: team.entryId,
+          if (!gwData) return null;
+
+          const netPoints = gwData.points - gwData.event_transfers_cost;
+
+          // Track 100+ gameweeks
+          if (netPoints >= 100) {
+            if (!centurionCount[team.entryId]) {
+              centurionCount[team.entryId] = {
                 manager: team.managerName,
                 teamName: team.teamName,
-                points: gwData.points - gwData.event_transfers_cost,
-                gameweek: gw,
-              }
-            : null;
+                count: 0,
+              };
+            }
+            centurionCount[team.entryId].count++;
+          }
+
+          // Track highest bench points
+          if (
+            !highestBenchPoints ||
+            gwData.points_on_bench > highestBenchPoints.points
+          ) {
+            highestBenchPoints = {
+              manager: team.managerName,
+              teamName: team.teamName,
+              gameweek: gw,
+              points: gwData.points_on_bench,
+            };
+          }
+
+          // Track highest captain points
+          if (
+            !highestCaptainPoints ||
+            gwData.captain_points > highestCaptainPoints.points
+          ) {
+            highestCaptainPoints = {
+              manager: team.managerName,
+              teamName: team.teamName,
+              gameweek: gw,
+              points: gwData.captain_points,
+            };
+          }
+
+          return {
+            entryId: team.entryId,
+            manager: team.managerName,
+            teamName: team.teamName,
+            points: netPoints,
+            gameweek: gw,
+          };
         })
         .filter(Boolean) as {
         entryId: number;
@@ -473,60 +539,77 @@ export const fetchAchievementStats = async (
 
       gwPerformances.sort((a, b) => b.points - a.points);
 
-      // Top performer
-      const winner = gwPerformances[0];
-      if (!managerOfWeekCount[winner.entryId]) {
-        managerOfWeekCount[winner.entryId] = {
-          manager: winner.manager,
-          teamName: winner.teamName,
-          count: 0,
-        };
-      }
-      managerOfWeekCount[winner.entryId].count++;
+      // Top 3
+      gwPerformances.slice(0, 3).forEach((p) => {
+        if (!top3OfWeekCount[p.entryId]) {
+          top3OfWeekCount[p.entryId] = {
+            manager: p.manager,
+            teamName: p.teamName,
+            count: 0,
+          };
+        }
+        top3OfWeekCount[p.entryId].count++;
+      });
 
-      // Bottom performer
-      const loser = gwPerformances[gwPerformances.length - 1];
-      if (!loserOfWeekCount[loser.entryId]) {
-        loserOfWeekCount[loser.entryId] = {
-          manager: loser.manager,
-          teamName: loser.teamName,
-          count: 0,
-        };
-      }
-      loserOfWeekCount[loser.entryId].count++;
+      // Bottom 3
+      gwPerformances.slice(-3).forEach((p) => {
+        if (!bottom3OfWeekCount[p.entryId]) {
+          bottom3OfWeekCount[p.entryId] = {
+            manager: p.manager,
+            teamName: p.teamName,
+            count: 0,
+          };
+        }
+        bottom3OfWeekCount[p.entryId].count++;
+      });
 
-      // Track highest/lowest single GW
-      if (!highestSingleGw || winner.points > highestSingleGw.points) {
+      // Highest & Lowest single GW
+      const top = gwPerformances[0];
+      const bottom = gwPerformances[gwPerformances.length - 1];
+
+      if (!highestSingleGw || top.points > highestSingleGw.points) {
         highestSingleGw = {
-          manager: winner.manager,
-          teamName: winner.teamName,
+          manager: top.manager,
+          teamName: top.teamName,
           gameweek: gw,
-          points: winner.points,
+          points: top.points,
         };
       }
 
-      if (!lowestSingleGw || loser.points < lowestSingleGw.points) {
+      if (!lowestSingleGw || bottom.points < lowestSingleGw.points) {
         lowestSingleGw = {
-          manager: loser.manager,
-          teamName: loser.teamName,
+          manager: bottom.manager,
+          teamName: bottom.teamName,
           gameweek: gw,
-          points: loser.points,
+          points: bottom.points,
         };
       }
     });
 
-    const mostManagerOfWeek = Object.values(managerOfWeekCount)
-      .sort((a, b) => b.count - a.count)[0] || null;
+    // === Final Results ===
+    const mostTop3Finishes =
+      Object.values(top3OfWeekCount).sort((a, b) => b.count - a.count)[0] ||
+      null;
 
-    const mostLoserOfWeek = Object.values(loserOfWeekCount)
-      .sort((a, b) => b.count - a.count)[0] || null;
+    const mostBottom3Finishes =
+      Object.values(bottom3OfWeekCount).sort((a, b) => b.count - a.count)[0] ||
+      null;
+
+    const mostCenturions =
+      Object.values(centurionCount).sort((a, b) => b.count - a.count)[0] ||
+      null;
 
     return {
       mostValuableSquad,
-      mostManagerOfWeek,
-      mostLoserOfWeek,
+      mostManagerOfWeek: mostTop3Finishes, // Renamed to reflect Top 3
+      mostLoserOfWeek: mostBottom3Finishes, // Renamed to reflect Bottom 3
       highestSingleGw,
       lowestSingleGw,
+
+      // === NEW ACHIEVEMENTS ===
+      highestBenchPoints, // Biggest bench regret (most points on bench in a GW)
+      highestCaptainPoints, // Best captain pick ever
+      mostCenturions, // Most 100+ point gameweeks ("Centurion Club")
     };
   } catch (error) {
     console.error("Error fetching achievement stats:", error);

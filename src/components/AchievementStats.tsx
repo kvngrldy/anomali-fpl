@@ -73,7 +73,7 @@ const AchievementStats: React.FC<AchievementStatsProps> = ({ leagueId }) => {
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Most Manager of the Week */}
+          {/* Most Manager of the Week (Top 3 Finishes) */}
           {stats.mostManagerOfWeek && (
             <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
               <div className="flex items-center gap-2 mb-2">
@@ -82,23 +82,25 @@ const AchievementStats: React.FC<AchievementStatsProps> = ({ leagueId }) => {
                   Most Manager of the Week
                 </span>
               </div>
-              <p className="font-semibold">{stats.mostManagerOfWeek.teamName}</p>
+              <p className="font-semibold">
+                {stats.mostManagerOfWeek.teamName}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {stats.mostManagerOfWeek.manager}
               </p>
               <p className="text-xl font-bold text-green-500 mt-1">
-                {stats.mostManagerOfWeek.count}x wins
+                {stats.mostManagerOfWeek.count}x
               </p>
             </div>
           )}
 
-          {/* Most Loser of the Week */}
+          {/* Most Loser of the Week (Bottom 3 Finishes) */}
           {stats.mostLoserOfWeek && (
             <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xl">🚮</span>
                 <span className="text-sm font-medium text-muted-foreground">
-                  Most Manager Piyungan
+                  Penghuni Setia Piyungan
                 </span>
               </div>
               <p className="font-semibold">{stats.mostLoserOfWeek.teamName}</p>
@@ -106,7 +108,7 @@ const AchievementStats: React.FC<AchievementStatsProps> = ({ leagueId }) => {
                 {stats.mostLoserOfWeek.manager}
               </p>
               <p className="text-xl font-bold text-red-500 mt-1">
-                {stats.mostLoserOfWeek.count}x losses
+                {stats.mostLoserOfWeek.count}x
               </p>
             </div>
           )}
@@ -120,7 +122,9 @@ const AchievementStats: React.FC<AchievementStatsProps> = ({ leagueId }) => {
                   Squad Termahal
                 </span>
               </div>
-              <p className="font-semibold">{stats.mostValuableSquad.teamName}</p>
+              <p className="font-semibold">
+                {stats.mostValuableSquad.teamName}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {stats.mostValuableSquad.manager}
               </p>
@@ -141,7 +145,8 @@ const AchievementStats: React.FC<AchievementStatsProps> = ({ leagueId }) => {
               </div>
               <p className="font-semibold">{stats.highestSingleGw.teamName}</p>
               <p className="text-xs text-muted-foreground">
-                {stats.highestSingleGw.manager} - GW{stats.highestSingleGw.gameweek}
+                {stats.highestSingleGw.manager} - GW
+                {stats.highestSingleGw.gameweek}
               </p>
               <p className="text-xl font-bold text-blue-500 mt-1">
                 {stats.highestSingleGw.points} pts
@@ -160,10 +165,33 @@ const AchievementStats: React.FC<AchievementStatsProps> = ({ leagueId }) => {
               </div>
               <p className="font-semibold">{stats.lowestSingleGw.teamName}</p>
               <p className="text-xs text-muted-foreground">
-                {stats.lowestSingleGw.manager} - GW{stats.lowestSingleGw.gameweek}
+                {stats.lowestSingleGw.manager} - GW
+                {stats.lowestSingleGw.gameweek}
               </p>
               <p className="text-xl font-bold text-orange-500 mt-1">
                 {stats.lowestSingleGw.points} pts
+              </p>
+            </div>
+          )}
+
+          {/* === NEW: Biggest Bench Regret === */}
+          {stats.highestBenchPoints && (
+            <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">🪑</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Point Tertinggi di Bench
+                </span>
+              </div>
+              <p className="font-semibold">
+                {stats.highestBenchPoints.teamName}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {stats.highestBenchPoints.manager} - GW
+                {stats.highestBenchPoints.gameweek}
+              </p>
+              <p className="text-xl font-bold text-purple-500 mt-1">
+                {stats.highestBenchPoints.points} pts
               </p>
             </div>
           )}
