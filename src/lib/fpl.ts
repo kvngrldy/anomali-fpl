@@ -223,6 +223,317 @@ export const fetchLeagueStandings = async (): Promise<TeamData[]> => {
   }
 };
 
+// Managers to exclude from achievements and graphs
+const EXCLUDED_MANAGERS = ["Areef", "Airwaves"];
+
+const isExcludedManager = (teamName: string): boolean => {
+  return EXCLUDED_MANAGERS.some(
+    (name) => teamName.toLowerCase().includes(name.toLowerCase()),
+  );
+};
+
+export interface RankHistoryEntry {
+  gameweek: number;
+  leaguePosition: number;
+  points: number;
+  totalPoints: number;
+}
+
+export interface ManagerRankHistory {
+  entryId: number;
+  teamName: string;
+  managerName: string;
+  history: RankHistoryEntry[];
+}
+
+export interface AchievementData {
+  mostValuableSquad: { manager: string; teamName: string; value: number } | null;
+  mostManagerOfWeek: { manager: string; teamName: string; count: number } | null;
+  mostLoserOfWeek: { manager: string; teamName: string; count: number } | null;
+  highestSingleGw: { manager: string; teamName: string; gameweek: number; points: number } | null;
+  lowestSingleGw: { manager: string; teamName: string; gameweek: number; points: number } | null;
+}
+
+export const fetchRankProgression = async (
+  leagueId: string,
+): Promise<ManagerRankHistory[]> => {
+  try {
+    const currentGameweekNumber = await getCurrentGameweek();
+
+    const standingsResponse = await fetch(
+      `/api/leagues-classic/${leagueId}/standings/`,
+    );
+    const standingsData = await standingsResponse.json();
+
+    const teams = standingsData?.standings?.results || [];
+
+    // Filter out excluded managers
+    const filteredTeams = teams.filter(
+      (team: any) => !isExcludedManager(team.entry_name),
+    );
+
+    // First, fetch all history data
+    const teamHistoryData = await Promise.all(
+      filteredTeams.map(async (team: any) => {
+        const historyCacheKey = `history_${team.entry}`;
+        let historyData = getFromCache<any>(
+          historyCacheKey,
+          currentGameweekNumber,
+        );
+
+        if (!historyData) {
+          const historyResponse = await fetch(
+            `/api/entry/${team.entry}/history/`,
+          );
+          historyData = await historyResponse.json();
+          setToCache(historyCacheKey, historyData, currentGameweekNumber);
+        }
+
+        return {
+          entryId: team.entry,
+          teamName: team.entry_name,
+          managerName: team.player_name,
+          rawHistory: historyData.current || [],
+        };
+      }),
+    );
+
+    // Get all gameweeks
+    const allGameweeks = new Set<number>();
+    teamHistoryData.forEach((team) => {
+      team.rawHistory.forEach((gw: any) => {
+        allGameweeks.add(gw.event);
+      });
+    });
+
+    // Calculate league position for each gameweek
+    const managerHistories: ManagerRankHistory[] = teamHistoryData.map(
+      (team) => {
+        const history: RankHistoryEntry[] = [];
+
+        Array.from(allGameweeks)
+          .sort((a, b) => a - b)
+          .forEach((gw) => {
+            // Get all teams' total points at this gameweek
+            const gwStandings = teamHistoryData
+              .map((t) => {
+                const gwData = t.rawHistory.find((h: any) => h.event === gw);
+                return gwData
+                  ? { entryId: t.entryId, totalPoints: gwData.total_points }
+                  : null;
+              })
+              .filter(Boolean) as { entryId: number; totalPoints: number }[];
+
+            // Sort by total points descending
+            gwStandings.sort((a, b) => b.totalPoints - a.totalPoints);
+
+            // Find this team's position
+            const position =
+              gwStandings.findIndex((s) => s.entryId === team.entryId) + 1;
+
+            const teamGwData = team.rawHistory.find(
+              (h: any) => h.event === gw,
+            );
+            if (teamGwData && position > 0) {
+              history.push({
+                gameweek: gw,
+                leaguePosition: position,
+                points: teamGwData.points - teamGwData.event_transfers_cost,
+                totalPoints: teamGwData.total_points,
+              });
+            }
+          });
+
+        return {
+          entryId: team.entryId,
+          teamName: team.teamName,
+          managerName: team.managerName,
+          history,
+        };
+      },
+    );
+
+    return managerHistories;
+  } catch (error) {
+    console.error("Error fetching rank progression:", error);
+    throw new Error("Failed to fetch rank progression");
+  }
+};
+
+export const fetchAchievementStats = async (
+  leagueId: string,
+): Promise<AchievementData> => {
+  try {
+    const currentGameweekNumber = await getCurrentGameweek();
+
+    const standingsResponse = await fetch(
+      `/api/leagues-classic/${leagueId}/standings/`,
+    );
+    const standingsData = await standingsResponse.json();
+
+    const bootstrapResponse = await fetch(`/api/bootstrap-static/`);
+    const bootstrapData = await bootstrapResponse.json();
+
+    const teams = standingsData?.standings?.results || [];
+
+    // Filter out excluded managers
+    const filteredTeams = teams.filter(
+      (team: any) => !isExcludedManager(team.entry_name),
+    );
+
+    // Fetch all team data
+    const teamDataList = await Promise.all(
+      filteredTeams.map(async (team: any) => {
+        const historyCacheKey = `history_${team.entry}`;
+        let historyData = getFromCache<any>(
+          historyCacheKey,
+          currentGameweekNumber,
+        );
+
+        if (!historyData) {
+          const historyResponse = await fetch(
+            `/api/entry/${team.entry}/history/`,
+          );
+          historyData = await historyResponse.json();
+          setToCache(historyCacheKey, historyData, currentGameweekNumber);
+        }
+
+        // Fetch team value from entry endpoint
+        const entryCacheKey = `entry_${team.entry}`;
+        let entryData = getFromCache<any>(entryCacheKey, currentGameweekNumber);
+
+        if (!entryData) {
+          const entryResponse = await fetch(`/api/entry/${team.entry}/`);
+          entryData = await entryResponse.json();
+          setToCache(entryCacheKey, entryData, currentGameweekNumber);
+        }
+
+        return {
+          entryId: team.entry,
+          teamName: team.entry_name,
+          managerName: team.player_name,
+          history: historyData.current || [],
+          teamValue: entryData.last_deadline_value || 0,
+        };
+      }),
+    );
+
+    // Calculate most valuable squad
+    const sortedByValue = [...teamDataList].sort(
+      (a, b) => b.teamValue - a.teamValue,
+    );
+    const mostValuableSquad = sortedByValue[0]
+      ? {
+          manager: sortedByValue[0].managerName,
+          teamName: sortedByValue[0].teamName,
+          value: sortedByValue[0].teamValue / 10,
+        }
+      : null;
+
+    // Calculate GW winners and losers (only finished gameweeks)
+    const finishedGameweeks = bootstrapData.events
+      .filter((e: any) => e.finished)
+      .map((e: any) => e.id);
+
+    const managerOfWeekCount: Record<
+      number,
+      { manager: string; teamName: string; count: number }
+    > = {};
+    const loserOfWeekCount: Record<
+      number,
+      { manager: string; teamName: string; count: number }
+    > = {};
+
+    let highestSingleGw: AchievementData["highestSingleGw"] = null;
+    let lowestSingleGw: AchievementData["lowestSingleGw"] = null;
+
+    finishedGameweeks.forEach((gw: number) => {
+      const gwPerformances = teamDataList
+        .map((team) => {
+          const gwData = team.history.find((h: any) => h.event === gw);
+          return gwData
+            ? {
+                entryId: team.entryId,
+                manager: team.managerName,
+                teamName: team.teamName,
+                points: gwData.points - gwData.event_transfers_cost,
+                gameweek: gw,
+              }
+            : null;
+        })
+        .filter(Boolean) as {
+        entryId: number;
+        manager: string;
+        teamName: string;
+        points: number;
+        gameweek: number;
+      }[];
+
+      if (gwPerformances.length === 0) return;
+
+      gwPerformances.sort((a, b) => b.points - a.points);
+
+      // Top performer
+      const winner = gwPerformances[0];
+      if (!managerOfWeekCount[winner.entryId]) {
+        managerOfWeekCount[winner.entryId] = {
+          manager: winner.manager,
+          teamName: winner.teamName,
+          count: 0,
+        };
+      }
+      managerOfWeekCount[winner.entryId].count++;
+
+      // Bottom performer
+      const loser = gwPerformances[gwPerformances.length - 1];
+      if (!loserOfWeekCount[loser.entryId]) {
+        loserOfWeekCount[loser.entryId] = {
+          manager: loser.manager,
+          teamName: loser.teamName,
+          count: 0,
+        };
+      }
+      loserOfWeekCount[loser.entryId].count++;
+
+      // Track highest/lowest single GW
+      if (!highestSingleGw || winner.points > highestSingleGw.points) {
+        highestSingleGw = {
+          manager: winner.manager,
+          teamName: winner.teamName,
+          gameweek: gw,
+          points: winner.points,
+        };
+      }
+
+      if (!lowestSingleGw || loser.points < lowestSingleGw.points) {
+        lowestSingleGw = {
+          manager: loser.manager,
+          teamName: loser.teamName,
+          gameweek: gw,
+          points: loser.points,
+        };
+      }
+    });
+
+    const mostManagerOfWeek = Object.values(managerOfWeekCount)
+      .sort((a, b) => b.count - a.count)[0] || null;
+
+    const mostLoserOfWeek = Object.values(loserOfWeekCount)
+      .sort((a, b) => b.count - a.count)[0] || null;
+
+    return {
+      mostValuableSquad,
+      mostManagerOfWeek,
+      mostLoserOfWeek,
+      highestSingleGw,
+      lowestSingleGw,
+    };
+  } catch (error) {
+    console.error("Error fetching achievement stats:", error);
+    throw new Error("Failed to fetch achievement stats");
+  }
+};
+
 export const fetchGameweekPerformances = async (
   leagueId: string,
 ): Promise<GameweekTopBottom[]> => {
