@@ -77,8 +77,12 @@ export interface Transfer {
   time: string;
 }
 
+// Entry ID of our friend who passed away — forever honored at #1
+export const MEMORIAL_ENTRY_ID = 7149440;
+
 export interface TeamData {
   rank: number;
+  entryId: number;
   teamName: string;
   managerName: string;
   points: number;
@@ -206,6 +210,7 @@ export const fetchLeagueStandings = async (): Promise<TeamData[]> => {
 
         return {
           rank: team.rank,
+          entryId: team.entry,
           teamName: team.entry_name,
           managerName: team.player_name,
           points,
@@ -216,7 +221,20 @@ export const fetchLeagueStandings = async (): Promise<TeamData[]> => {
     );
 
     // Sort teams by points (highest first)
-    return teams.sort((a, b) => b.points - a.points);
+    teams.sort((a, b) => b.points - a.points);
+
+    // Pin our fallen friend to the top of the table — forever #1
+    const memorialIndex = teams.findIndex(
+      (t) => t.entryId === MEMORIAL_ENTRY_ID,
+    );
+    if (memorialIndex >= 0) {
+      const [memorialTeam] = teams.splice(memorialIndex, 1);
+      // Total points replaced with date of passing: 28-04-2026
+      memorialTeam.points = 28042026;
+      teams.unshift(memorialTeam);
+    }
+
+    return teams;
   } catch (error) {
     console.error("Error fetching league standings:", error);
     throw new Error("Failed to fetch league standings");
