@@ -1,5 +1,5 @@
 {
-  "name": "fpl-anomali",
+  "name": "anomali-fpl",
   "compatibility_date": "2025-10-19",
   "main": "./_worker.js",
   "assets": {
